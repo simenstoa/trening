@@ -1,0 +1,66 @@
+html {
+  height: 100%;
+}
+body {
+  font-family: 'Source Sans Pro', 'Trebuchet MS', 'Lucida Grande',
+    'Bitstream Vera Sans', 'Helvetica Neue', sans-serif;
+  margin: 0;
+  text-align: center;
+  color: #293c4b;
+  min-height: 100%;
+  display: grid;
+  grid-template-rows: 1fr auto;
+}
+footer {
+  grid-row-start: 2;
+  grid-row-end: 3;
+}
+
+h1 {
+  font-size: 30px;
+}
+
+.header {
+  height: 40px;
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.profile {
+  margin-top: 20px;
+  margin-right: 20px;
+}
+
+.profile-name {
+  line-height: 40px;
+  margin-right: 10px;
+  vertical-align: super;
+}
+
+.profile-pic {
+  height: 25px;
+  border-radius: 50%;
+}
+
+#strava_outlined {
+  width: 150px;
+}
+
+.container {
+  display: grid;
+}
+
+.logIn {
+  margin: 250px 0;
+}
+
+.logInButton {
+  margin: 0 auto;
+  display: block;
+  text-indent: -9999px;
+  width: 185px;
+  height: 40px;
+  background: url('../public/btn_strava_connectwith_orange.svg');
+  background-size: 185px 40px;
+}
