@@ -61,6 +61,7 @@ type alias LogInResult =
 type alias Config =
     { clientSecret : String
     , clientId : String
+    , origin : String
     }
 
 
@@ -305,7 +306,9 @@ view model =
                         [ href
                             ("https://www.strava.com/oauth/authorize?client_id="
                                 ++ model.config.clientId
-                                ++ "&redirect_uri=http://localhost:3000/login&response_type=code"
+                                ++ "&redirect_uri="
+                                ++ model.config.origin
+                                ++ "/login&response_type=code"
                             )
                         , class "logInButton"
                         ]

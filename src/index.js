@@ -5,6 +5,7 @@ import registerServiceWorker from './registerServiceWorker';
 Main.embed(document.getElementById('root'), {
   clientSecret: process.env.ELM_APP_STRAVA_CLIENT_SECRET,
   clientId: process.env.ELM_APP_STRAVA_CLIENT_ID,
+  origin: process.env.ELM_APP_ORIGIN,
 });
 
 registerServiceWorker();
