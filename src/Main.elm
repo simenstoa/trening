@@ -268,13 +268,20 @@ update msg model =
             ( { model | applicationState = Error error }, Cmd.none )
 
         UpdateActivities (Ok activities) ->
-            ( { model
-                | activities = List.concat [ model.activities, activities ]
-                , activityPage = model.activityPage + 1
-                , moreActivites = (List.length activities) > 0
-              }
-            , Cmd.none
-            )
+            let
+                newModel =
+                    { model
+                        | activities = List.concat [ model.activities, activities ]
+                        , activityPage = model.activityPage + 1
+                        , moreActivites = (List.length activities) > 0
+                    }
+            in
+                ( newModel
+                , if newModel.moreActivites then
+                    fetchRaces newModel
+                  else
+                    Cmd.none
+                )
 
         UpdateActivities (Err error) ->
             ( { model | applicationState = Error error }, Cmd.none )
@@ -324,8 +331,10 @@ view model =
                         , img [ src athlete.profile_medium, alt "avatar", class "profile-pic" ] []
                         ]
                     ]
-                , section [ class "activities" ] <| List.map renderActivity (getRaces model.activities)
-                , button [ onClick FetchMoreActivities ] [ text "Hent flere" ]
+                , if model.moreActivites then
+                    text "Henter aktiviteter..."
+                  else
+                    section [ class "activities" ] <| List.map renderActivity (getRaces model.activities)
                 ]
 
         Error err ->
