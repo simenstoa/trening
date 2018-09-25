@@ -1,12 +1,17 @@
-module Main exposing (..)
+module Main exposing (AccessToken(..), Activity, ActivityType(..), ApplicationState(..), Athlete, Config, LogInResult, Model, Msg(..), Route(..), WorkoutType(..), athleteDecoder, fetchRaces, getAccessToken, getRaces, init, initialModel, main, parseLocation, raceDecoder, renderActivity, typeDecoder, update, updateRoute, view, workoutTypeDecoder)
 
-import Html exposing (..)
-import Html.Attributes exposing (src, href, class, alt)
+import Browser
+import Browser.Navigation as Nav
+import Html exposing (Html, a, div, h1, header, img, section, span, text)
+import Html.Attributes exposing (alt, class, href, src)
 import Html.Events exposing (onClick)
 import Http
 import Json.Decode as Decode
-import Navigation
-import UrlParser exposing (..)
+import Url
+import Url.Builder
+import Url.Parser exposing (..)
+import Url.Parser.Query as Query
+
 
 
 ---- MODEL ----
@@ -71,22 +76,24 @@ type alias Model =
     , activityPage : Int
     , moreActivites : Bool
     , config : Config
+    , key : Nav.Key
     }
 
 
-initialModel : Config -> Model
-initialModel config =
+initialModel : Nav.Key -> Config -> Model
+initialModel key config =
     { applicationState = NotLoggedIn
     , activities = []
     , activityPage = 0
     , moreActivites = True
     , config = config
+    , key = key
     }
 
 
-init : Config -> Navigation.Location -> ( Model, Cmd Msg )
-init config location =
-    updateRoute (initialModel config) <| parseLocation location
+init : Config -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
+init config location key =
+    updateRoute (initialModel key config) <| parseLocation location
 
 
 getRaces : List Activity -> List Activity
@@ -99,7 +106,8 @@ getRaces races =
 
 
 type Msg
-    = UrlChange Navigation.Location
+    = UrlChange Route
+    | ClickedLink Browser.UrlRequest
     | SetLoginResult (Result Http.Error LogInResult)
     | UpdateActivities (Result Http.Error (List Activity))
     | FetchMoreActivities
@@ -201,7 +209,7 @@ fetchRaces model =
                 Http.request
                     { method = "GET"
                     , headers = [ Http.header "Authorization" ("Bearer " ++ token) ]
-                    , url = ("https://www.strava.com/api/v3/athlete/activities?per_page=200&page=" ++ toString (model.activityPage + 1))
+                    , url = "https://www.strava.com/api/v3/athlete/activities?per_page=200&page=" ++ String.fromInt (model.activityPage + 1)
                     , body = Http.emptyBody
                     , expect = Http.expectJson (Decode.list raceDecoder)
                     , timeout = Nothing
@@ -218,6 +226,11 @@ type Route
     | NotFoundRoute
 
 
+handleUrlChange : Url.Url -> Msg
+handleUrlChange url =
+    UrlChange <| parseLocation url
+
+
 updateRoute : Model -> Route -> ( Model, Cmd Msg )
 updateRoute model route =
     case route of
@@ -231,28 +244,45 @@ updateRoute model route =
             ( model, Cmd.none )
 
 
-parseLocation : Navigation.Location -> Route
+parseLocation : Url.Url -> Route
 parseLocation location =
     let
         parser =
-            UrlParser.oneOf
-                [ UrlParser.map RacesRoute (UrlParser.s "races")
-                , UrlParser.map LoginRoute (UrlParser.s "login" <?> stringParam "code")
+            oneOf
+                [ map RacesRoute (s "races")
+                , map LoginRoute (s "login" <?> Query.string "code")
                 ]
     in
-        case UrlParser.parsePath parser location of
-            Just r ->
-                r
+    case Url.Parser.parse parser location of
+        Just r ->
+            r
 
-            Nothing ->
-                NotFoundRoute
+        Nothing ->
+            NotFoundRoute
+
+
+handleUrlRequest : Browser.UrlRequest -> Msg
+handleUrlRequest url =
+    ClickedLink url
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         UrlChange location ->
-            updateRoute model <| parseLocation location
+            updateRoute model location
+
+        ClickedLink urlRequest ->
+            case urlRequest of
+                Browser.Internal url ->
+                    ( model
+                    , Nav.pushUrl model.key (Url.toString url)
+                    )
+
+                Browser.External url ->
+                    ( model
+                    , Nav.load url
+                    )
 
         SetLoginResult (Ok logInResult) ->
             ( { model
@@ -261,7 +291,7 @@ update msg model =
                         (AccessToken logInResult.accessToken)
                         logInResult.athlete
               }
-            , Navigation.modifyUrl "/races"
+            , Nav.pushUrl model.key (Url.Builder.relative [ "races" ] [])
             )
 
         SetLoginResult (Err error) ->
@@ -273,15 +303,16 @@ update msg model =
                     { model
                         | activities = List.concat [ model.activities, activities ]
                         , activityPage = model.activityPage + 1
-                        , moreActivites = (List.length activities) > 0
+                        , moreActivites = List.length activities > 0
                     }
             in
-                ( newModel
-                , if newModel.moreActivites then
-                    fetchRaces newModel
-                  else
-                    Cmd.none
-                )
+            ( newModel
+            , if newModel.moreActivites then
+                fetchRaces newModel
+
+              else
+                Cmd.none
+            )
 
         UpdateActivities (Err error) ->
             ( { model | applicationState = Error error }, Cmd.none )
@@ -302,43 +333,63 @@ renderActivity race =
     div [ class "activity" ] [ text race.name ]
 
 
-view : Model -> Html Msg
+view : Model -> Browser.Document Msg
 view model =
-    case model.applicationState of
-        NotLoggedIn ->
-            section [ class "content" ]
-                [ section [ class "logIn" ]
-                    [ h1 [ class "logInHeader" ] [ text "Logg inn" ]
-                    , a
-                        [ href
-                            ("https://www.strava.com/oauth/authorize?client_id="
-                                ++ model.config.clientId
-                                ++ "&redirect_uri="
-                                ++ model.config.origin
-                                ++ "/login&response_type=code"
-                            )
-                        , class "logInButton"
-                        ]
-                        []
-                    ]
-                ]
-
-        LoggedIn _ athlete ->
-            section [ class "content" ]
-                [ header [ class "header" ]
-                    [ div [ class "profile" ]
-                        [ span [ class "profile-name" ] [ text athlete.firstname ]
-                        , img [ src athlete.profile_medium, alt "avatar", class "profile-pic" ] []
+    { title = "S33 trening"
+    , body =
+        [ case model.applicationState of
+            NotLoggedIn ->
+                section [ class "content" ]
+                    [ section [ class "logIn" ]
+                        [ h1 [ class "logInHeader" ] [ text "Logg inn" ]
+                        , a
+                            [ href
+                                ("https://www.strava.com/oauth/authorize?client_id="
+                                    ++ model.config.clientId
+                                    ++ "&redirect_uri="
+                                    ++ model.config.origin
+                                    ++ "/login&response_type=code"
+                                )
+                            , class "logInButton"
+                            ]
+                            []
                         ]
                     ]
-                , if model.moreActivites then
-                    text "Henter aktiviteter..."
-                  else
-                    section [ class "activities" ] <| List.map renderActivity (getRaces model.activities)
-                ]
 
-        Error err ->
-            text <| toString err
+            LoggedIn _ athlete ->
+                section [ class "content" ]
+                    [ header [ class "header" ]
+                        [ div [ class "profile" ]
+                            [ span [ class "profile-name" ] [ text <| "Logget inn som " ++ athlete.firstname ]
+                            , img [ src athlete.profile_medium, alt "avatar", class "profile-pic" ] []
+                            ]
+                        ]
+                    , if model.moreActivites then
+                        text "Henter aktiviteter..."
+
+                      else
+                        section [ class "activities" ] <| List.map renderActivity (getRaces model.activities)
+                    ]
+
+            Error err ->
+                text <|
+                    case err of
+                        Http.BadUrl msg ->
+                            msg
+
+                        Http.Timeout ->
+                            "Timed out"
+
+                        Http.NetworkError ->
+                            "Network error"
+
+                        Http.BadStatus response ->
+                            String.fromInt response.status.code ++ ": " ++ response.status.message
+
+                        Http.BadPayload msg _ ->
+                            msg
+        ]
+    }
 
 
 
@@ -346,9 +397,11 @@ view model =
 
 
 main =
-    Navigation.programWithFlags UrlChange
+    Browser.application
         { view = view
         , init = init
         , update = update
         , subscriptions = always Sub.none
+        , onUrlRequest = handleUrlRequest
+        , onUrlChange = handleUrlChange
         }

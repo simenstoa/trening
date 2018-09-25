@@ -1,6 +1,7 @@
 html {
   height: 100%;
 }
+
 body {
   font-family: 'Source Sans Pro', 'Trebuchet MS', 'Lucida Grande',
     'Bitstream Vera Sans', 'Helvetica Neue', sans-serif;
@@ -11,6 +12,7 @@ body {
   display: grid;
   grid-template-rows: 1fr auto;
 }
+
 footer {
   grid-row-start: 2;
   grid-row-end: 3;
@@ -21,7 +23,7 @@ h1 {
 }
 
 .header {
-  height: 40px;
+  height: 80px;
   width: 100%;
   display: flex;
   justify-content: flex-end;
@@ -41,6 +43,7 @@ h1 {
 .profile-pic {
   height: 25px;
   border-radius: 50%;
+  border: 1px solid #2b93e6;
 }
 
 #strava_outlined {
@@ -63,4 +66,32 @@ h1 {
   height: 40px;
   background: url('../public/btn_strava_connectwith_orange.svg');
   background-size: 185px 40px;
+}
+
+.activity {
+  background-color: #fbf7f4;
+  padding: 5%;
+  box-sizing: border-box;
+  border: 1px solid #fbf7f4;
+}
+
+.activity:hover {
+  background-color: #fbf7f4;
+  border: 1px solid #2b93e6;
+}
+
+@media (max-width: 899px) {
+  .activities {
+    width: 70%;
+    margin: 0 auto;
+    text-align: left;
+  }
+}
+
+@media (min-width: 900px) {
+  .activities {
+    width: 20%;
+    text-align: left;
+    margin-left: 5%;
+  }
 }
