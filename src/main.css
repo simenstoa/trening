@@ -5,6 +5,7 @@ html {
 body {
   font-family: 'Source Sans Pro', 'Trebuchet MS', 'Lucida Grande',
     'Bitstream Vera Sans', 'Helvetica Neue', sans-serif;
+  font-size: 16px;
   margin: 0;
   text-align: center;
   color: #293c4b;
@@ -68,9 +69,13 @@ h1 {
   background-size: 185px 40px;
 }
 
-.activity {
+.box {
   background-color: #fbf7f4;
-  padding: 5%;
+  text-align: left;
+}
+
+.activity {
+  padding: 12px;
   box-sizing: border-box;
   border: 1px solid #fbf7f4;
 }
@@ -80,18 +85,70 @@ h1 {
   border: 1px solid #2b93e6;
 }
 
+.flex-content {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.small-header {
+  padding: 12px;
+  margin: 0;
+}
+
+.more-information {
+  height: fit-content;
+}
+
+.fields {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: start;
+}
+
+.field {
+  margin: 0 12px 12px 12px;
+}
+
+.field-header {
+  font-size: 12px;
+  border-bottom: solid 1px;
+  color: grey;
+  width: fit-content;
+}
+
+.more-information-header {
+  margin: 12px;
+}
+
 @media (max-width: 899px) {
   .activities {
     width: 70%;
     margin: 0 auto;
-    text-align: left;
+  }
+
+  .main-content {
+    width: 70%;
+    margin: 0 auto;
+  }
+
+  .more-information {
+    width: 100%;
+    margin-top: 12px;
   }
 }
 
 @media (min-width: 900px) {
   .activities {
     width: 20%;
-    text-align: left;
     margin-left: 5%;
+  }
+
+  .main-content {
+    max-width: 70%;
+  }
+
+  .more-information {
+    max-width: 240px;
+    margin: 0 12px;
   }
 }

@@ -1,15 +1,18 @@
-module Main exposing (AccessToken(..), Activity, ActivityType(..), ApplicationState(..), Athlete, Config, LogInResult, Model, Msg(..), Route(..), WorkoutType(..), athleteDecoder, fetchRaces, getAccessToken, getRaces, init, initialModel, main, parseLocation, raceDecoder, renderActivity, typeDecoder, update, updateRoute, view, workoutTypeDecoder)
+module Main exposing (AccessToken(..), Activity, ActivityType(..), ApplicationState(..), Athlete, Config, LogInResult, Model, Msg(..), Route(..), WorkoutType(..), activityDecoder, athleteDecoder, fetchActivities, getAccessToken, getRaces, init, initialModel, main, parseLocation, renderActivity, typeDecoder, update, updateRoute, view, workoutTypeDecoder)
 
 import Browser
 import Browser.Navigation as Nav
-import Html exposing (Html, a, div, h1, header, img, section, span, text)
+import FormatNumber exposing (format)
+import FormatNumber.Locales exposing (Locale, frenchLocale)
+import Html exposing (Html, a, div, h1, h2, header, img, section, span, text)
 import Html.Attributes exposing (alt, class, href, src)
 import Html.Events exposing (onClick)
 import Http
-import Json.Decode as Decode
+import Json.Decode as Decode exposing (Decoder, bool, float, int, string)
+import Json.Decode.Pipeline exposing (custom, hardcoded, optional, required)
 import Url
 import Url.Builder
-import Url.Parser exposing (..)
+import Url.Parser exposing ((</>), (<?>), map, oneOf, s)
 import Url.Parser.Query as Query
 
 
@@ -52,8 +55,12 @@ type alias Activity =
     { id : Int
     , name : String
     , distance : Float
-    , workout_type : Maybe WorkoutType
-    , actvity_type : ActivityType
+    , moving_time : Int
+    , total_elevation_gain : Float
+    , has_heartrate : Bool
+    , workout_type : WorkoutType
+    , activity_type : ActivityType
+    , active : Bool
     }
 
 
@@ -73,6 +80,7 @@ type alias Config =
 type alias Model =
     { applicationState : ApplicationState
     , activities : List Activity
+    , races : List Activity
     , activityPage : Int
     , moreActivites : Bool
     , config : Config
@@ -80,10 +88,53 @@ type alias Model =
     }
 
 
+formatDistance : Float -> String
+formatDistance =
+    format { frenchLocale | decimals = 1 }
+
+
+formatTime : Int -> String
+formatTime seconds =
+    let
+        seconds_float =
+            toFloat seconds
+
+        hours =
+            (seconds_float / (60 * 60)) |> floor |> modBy 60
+
+        min =
+            (seconds_float / 60.0) |> floor |> modBy 60
+
+        sec =
+            modBy 60 seconds
+    in
+    (if hours > 0 then
+        String.fromInt hours ++ ":"
+
+     else
+        ""
+    )
+        ++ String.fromInt min
+        ++ ":"
+        ++ (String.padLeft 2 '0' <|
+                String.fromInt sec
+           )
+
+
+calculateSecPerKm : Float -> Int -> Int
+calculateSecPerKm distance moving_time =
+    let
+        sec_per_km =
+            toFloat moving_time / (distance / 1000)
+    in
+    round sec_per_km
+
+
 initialModel : Nav.Key -> Config -> Model
 initialModel key config =
     { applicationState = NotLoggedIn
     , activities = []
+    , races = []
     , activityPage = 0
     , moreActivites = True
     , config = config
@@ -98,7 +149,7 @@ init config location key =
 
 getRaces : List Activity -> List Activity
 getRaces races =
-    List.filter (\race -> race.workout_type == Just Race) races
+    List.filter (\race -> race.workout_type == Race) races
 
 
 
@@ -111,6 +162,7 @@ type Msg
     | SetLoginResult (Result Http.Error LogInResult)
     | UpdateActivities (Result Http.Error (List Activity))
     | FetchMoreActivities
+    | ClickedRace Activity
     | NoOp
 
 
@@ -177,32 +229,36 @@ typeDecoder activityAsString =
             Decode.succeed Other
 
 
-workoutTypeDecoder : Maybe Int -> Decode.Decoder WorkoutType
-workoutTypeDecoder typeAsInt =
-    case typeAsInt of
-        Just 1 ->
-            Decode.succeed Race
+workoutTypeDecoder : Decoder WorkoutType
+workoutTypeDecoder =
+    int
+        |> Decode.andThen
+            (\typeAsInt ->
+                case typeAsInt of
+                    1 ->
+                        Decode.succeed Race
 
-        _ ->
-            Decode.succeed Normal
-
-
-raceDecoder : Decode.Decoder Activity
-raceDecoder =
-    Decode.map5
-        Activity
-        (Decode.field "id" Decode.int)
-        (Decode.field
-            "name"
-            Decode.string
-        )
-        (Decode.field "distance" Decode.float)
-        (Decode.maybe (Decode.field "workout_type" (Decode.nullable Decode.int |> Decode.andThen workoutTypeDecoder)))
-        (Decode.field "type" (Decode.string |> Decode.andThen typeDecoder))
+                    _ ->
+                        Decode.succeed Normal
+            )
 
 
-fetchRaces : Model -> Cmd Msg
-fetchRaces model =
+activityDecoder : Decode.Decoder Activity
+activityDecoder =
+    Decode.succeed Activity
+        |> required "id" int
+        |> required "name" string
+        |> required "distance" float
+        |> required "moving_time" int
+        |> required "total_elevation_gain" float
+        |> required "has_heartrate" bool
+        |> optional "workout_type" workoutTypeDecoder Normal
+        |> required "type" (string |> Decode.andThen typeDecoder)
+        |> hardcoded False
+
+
+fetchActivities : Model -> Cmd Msg
+fetchActivities model =
     case model.applicationState of
         LoggedIn (AccessToken token) _ ->
             Http.send UpdateActivities <|
@@ -211,7 +267,7 @@ fetchRaces model =
                     , headers = [ Http.header "Authorization" ("Bearer " ++ token) ]
                     , url = "https://www.strava.com/api/v3/athlete/activities?per_page=200&page=" ++ String.fromInt (model.activityPage + 1)
                     , body = Http.emptyBody
-                    , expect = Http.expectJson (Decode.list raceDecoder)
+                    , expect = Http.expectJson (Decode.list activityDecoder)
                     , timeout = Nothing
                     , withCredentials = False
                     }
@@ -238,7 +294,7 @@ updateRoute model route =
             ( model, getAccessToken model code )
 
         RacesRoute ->
-            ( model, fetchRaces model )
+            ( model, fetchActivities model )
 
         _ ->
             ( model, Cmd.none )
@@ -284,6 +340,22 @@ update msg model =
                     , Nav.load url
                     )
 
+        ClickedRace race ->
+            ( { model
+                | races =
+                    List.map
+                        (\r ->
+                            if r == race then
+                                { r | active = not r.active }
+
+                            else
+                                r
+                        )
+                        model.races
+              }
+            , Cmd.none
+            )
+
         SetLoginResult (Ok logInResult) ->
             ( { model
                 | applicationState =
@@ -302,13 +374,14 @@ update msg model =
                 newModel =
                     { model
                         | activities = List.concat [ model.activities, activities ]
+                        , races = List.concat [ model.races, getRaces activities ]
                         , activityPage = model.activityPage + 1
                         , moreActivites = List.length activities > 0
                     }
             in
             ( newModel
             , if newModel.moreActivites then
-                fetchRaces newModel
+                fetchActivities newModel
 
               else
                 Cmd.none
@@ -318,7 +391,7 @@ update msg model =
             ( { model | applicationState = Error error }, Cmd.none )
 
         FetchMoreActivities ->
-            ( model, fetchRaces model )
+            ( model, fetchActivities model )
 
         NoOp ->
             ( model, Cmd.none )
@@ -330,7 +403,50 @@ update msg model =
 
 renderActivity : Activity -> Html Msg
 renderActivity race =
-    div [ class "activity" ] [ text race.name ]
+    div [ class "activity", onClick <| ClickedRace race ] [ text race.name ]
+
+
+renderRaces : List Activity -> Html Msg
+renderRaces races =
+    section [ class "box activities" ] <|
+        List.concat
+            [ [ h2
+                    [ class "small-header" ]
+                    [ text "Løp" ]
+              ]
+            , List.map renderActivity races
+            ]
+
+
+moreInformation : Activity -> Html Msg
+moreInformation activity =
+    section [ class "box more-information" ]
+        [ div [ class "more-information-header" ] [ text activity.name ]
+        , section [ class "fields" ]
+            [ (activity.distance
+                / 1000.0
+                |> formatDistance
+              )
+                ++ " km"
+                |> field "Lengde"
+            , activity.moving_time
+                |> formatTime
+                |> field "Tid"
+            , (calculateSecPerKm activity.distance activity.moving_time
+                |> formatTime
+              )
+                ++ " /km"
+                |> field "Fart"
+            ]
+        ]
+
+
+field : String -> String -> Html Msg
+field header value =
+    div [ class "field" ]
+        [ div [ class "field-header" ] [ text header ]
+        , div [ class "field-value" ] [ text value ]
+        ]
 
 
 view : Model -> Browser.Document Msg
@@ -368,7 +484,12 @@ view model =
                         text "Henter aktiviteter..."
 
                       else
-                        section [ class "activities" ] <| List.map renderActivity (getRaces model.activities)
+                        section [ class "flex-content" ] <|
+                            [ renderRaces model.races
+                            , section [ class "flex-content main-content" ] <|
+                                List.map (\race -> moreInformation race) <|
+                                    List.filter (\race -> race.active) model.races
+                            ]
                     ]
 
             Error err ->
