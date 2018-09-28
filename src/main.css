@@ -83,6 +83,11 @@ h1 {
 .activity:hover {
   background-color: #fbf7f4;
   border: 1px solid #2b93e6;
+  cursor: pointer;
+}
+
+.active {
+  font-style: oblique;
 }
 
 .flex-content {

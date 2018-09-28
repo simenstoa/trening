@@ -5,7 +5,7 @@ import Browser.Navigation as Nav
 import FormatNumber exposing (format)
 import FormatNumber.Locales exposing (Locale, frenchLocale)
 import Html exposing (Html, a, div, h1, h2, header, img, section, span, text)
-import Html.Attributes exposing (alt, class, href, src)
+import Html.Attributes exposing (alt, class, href, src, tabindex)
 import Html.Events exposing (onClick)
 import Http
 import Json.Decode as Decode exposing (Decoder, bool, float, int, string)
@@ -403,7 +403,19 @@ update msg model =
 
 renderActivity : Activity -> Html Msg
 renderActivity race =
-    div [ class "activity", onClick <| ClickedRace race ] [ text race.name ]
+    div
+        [ class <|
+            "activity"
+                ++ (if race.active then
+                        " active"
+
+                    else
+                        ""
+                   )
+        , onClick <| ClickedRace race
+        , tabindex 0
+        ]
+        [ text race.name ]
 
 
 renderRaces : List Activity -> Html Msg
