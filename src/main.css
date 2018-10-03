@@ -115,7 +115,7 @@ h1 {
 }
 
 .field {
-  margin: 5px 5px 0 5px;
+  margin: 0 10px 0 10px;
 }
 
 .field-header {
@@ -125,6 +125,44 @@ h1 {
   width: fit-content;
 }
 
+.statistics {
+  margin-left: 12px;
+  margin-top: 12px;
+  padding: 12px;
+  background-color: #fbf7f4;
+  height: fit-content;
+  text-align: left;
+  width: 320px;
+}
+
+.statistics-header {
+  margin-top: 0;
+  line-height: 25px;
+}
+
+.statistics-small-header {
+  font-weight: bold;
+}
+
+.statistics-field {
+  display: flex;
+  justify-content: space-between;
+}
+
+.activities {
+  width: 20%;
+  height: fit-content;
+  margin-left: 5%;
+  padding: 12px;
+}
+
+.main-content {
+  width: 70%;
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: -12px;
+}
+
 @media (max-width: 899px) {
   .activities {
     width: 70%;
@@ -132,18 +170,11 @@ h1 {
   }
 
   .main-content {
-    width: 70%;
     margin: 0 auto;
-  }
-}
-
-@media (min-width: 900px) {
-  .activities {
-    width: 20%;
-    margin-left: 5%;
+    margin-top: 12px;
   }
 
-  .main-content {
-    max-width: 70%;
+  .statistics {
+    width: 100%;
   }
 }

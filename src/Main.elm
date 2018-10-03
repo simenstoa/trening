@@ -4,14 +4,16 @@ import Browser
 import Browser.Navigation as Nav
 import FormatNumber exposing (format)
 import FormatNumber.Locales exposing (Locale, frenchLocale)
-import Html exposing (Html, a, div, footer, h1, h2, header, img, section, span, text)
+import Html exposing (Html, a, div, footer, h1, h2, h3, header, img, p, section, span, text)
 import Html.Attributes exposing (alt, class, href, id, src, tabindex)
 import Html.Events exposing (onClick)
 import Http
+import Iso8601
 import Json.Decode as Decode exposing (Decoder, bool, float, int, string)
 import Json.Decode.Pipeline exposing (custom, hardcoded, optional, required)
 import Svg exposing (path, polygon, svg)
 import Svg.Attributes as SvgAttr exposing (d, points, viewBox)
+import Time
 import Url
 import Url.Builder
 import Url.Parser exposing ((</>), (<?>), map, oneOf, s)
@@ -48,8 +50,6 @@ type WorkoutType
 type ActivityType
     = Run
     | Ride
-    | Hike
-    | NordicSki
     | Other
 
 
@@ -62,6 +62,7 @@ type alias Activity =
     , has_heartrate : Bool
     , workout_type : WorkoutType
     , activity_type : ActivityType
+    , start_date_local : Time.Posix
     , active : Bool
     }
 
@@ -91,8 +92,13 @@ type alias Model =
 
 
 formatDistance : Float -> String
-formatDistance =
-    format { frenchLocale | decimals = 1 }
+formatDistance distance =
+    format { frenchLocale | decimals = 1 } <| distance / 1000.0
+
+
+formatHours : Int -> String
+formatHours seconds =
+    (toFloat seconds / (60 * 60)) |> round |> String.fromInt
 
 
 formatTime : Int -> String
@@ -116,7 +122,13 @@ formatTime seconds =
      else
         ""
     )
-        ++ String.fromInt min
+        ++ (if hours > 0 then
+                String.padLeft 2 '0' <|
+                    String.fromInt min
+
+            else
+                String.fromInt min
+           )
         ++ ":"
         ++ (String.padLeft 2 '0' <|
                 String.fromInt sec
@@ -152,6 +164,59 @@ init config location key =
 getRaces : List Activity -> List Activity
 getRaces races =
     List.filter (\race -> race.workout_type == Race) races
+
+
+getActivitiesForLastThreeMonths : List Activity -> Activity -> List Activity
+getActivitiesForLastThreeMonths activities activity =
+    let
+        to =
+            activity.start_date_local
+
+        from =
+            Time.posixToMillis to - 7776000000 |> Time.millisToPosix
+    in
+    getActivitiesByInterval from to activities
+
+
+getActivitiesByInterval : Time.Posix -> Time.Posix -> List Activity -> List Activity
+getActivitiesByInterval from to =
+    List.filter
+        (\activity ->
+            Time.posixToMillis activity.start_date_local
+                > Time.posixToMillis from
+                && Time.posixToMillis activity.start_date_local
+                < Time.posixToMillis to
+        )
+
+
+getDistanceForActivities : List Activity -> Float
+getDistanceForActivities =
+    List.foldl (\activity sum -> sum + activity.distance) 0
+
+
+getTimeForActivities : List Activity -> Int
+getTimeForActivities =
+    List.foldl (\activity sum -> sum + activity.moving_time) 0
+
+
+getRuns : List Activity -> List Activity
+getRuns =
+    filterOnActivityType Run
+
+
+getRides : List Activity -> List Activity
+getRides =
+    filterOnActivityType Ride
+
+
+getOther : List Activity -> List Activity
+getOther =
+    filterOnActivityType Other
+
+
+filterOnActivityType : ActivityType -> List Activity -> List Activity
+filterOnActivityType filter =
+    List.filter (\{ activity_type } -> activity_type == filter)
 
 
 
@@ -221,12 +286,6 @@ typeDecoder activityAsString =
         "Ride" ->
             Decode.succeed Ride
 
-        "Hike" ->
-            Decode.succeed Hike
-
-        "NordicSki" ->
-            Decode.succeed NordicSki
-
         _ ->
             Decode.succeed Other
 
@@ -256,6 +315,7 @@ activityDecoder =
         |> required "has_heartrate" bool
         |> optional "workout_type" workoutTypeDecoder Normal
         |> required "type" (string |> Decode.andThen typeDecoder)
+        |> required "start_date_local" Iso8601.decoder
         |> hardcoded False
 
 
@@ -421,11 +481,6 @@ renderActivity race =
             ]
             [ text race.name
             ]
-        , if race.active then
-            moreInformation race
-
-          else
-            text ""
         ]
 
 
@@ -445,7 +500,6 @@ moreInformation : Activity -> Html Msg
 moreInformation activity =
     section [ class "fields" ]
         [ (activity.distance
-            / 1000.0
             |> formatDistance
           )
             ++ " km"
@@ -458,6 +512,44 @@ moreInformation activity =
           )
             ++ " /km"
             |> field "Fart"
+        ]
+
+
+statisticsFieldCommon : String -> String -> String -> Html Msg
+statisticsFieldCommon className label val =
+    p [ class className ]
+        [ text label
+        , span []
+            [ text val
+            ]
+        ]
+
+
+statisticsHeader : String -> String -> Html Msg
+statisticsHeader =
+    statisticsFieldCommon "statistics-small-header statistics-field"
+
+
+statisticsField : String -> String -> Html Msg
+statisticsField =
+    statisticsFieldCommon "statistics-field"
+
+
+statistics : Activity -> List Activity -> Html Msg
+statistics race activities =
+    section [ class "statistics" ]
+        [ h3 [ class "statistics-header" ] [ text race.name ]
+        , moreInformation race
+        , p [] [ text "Din aktivitet siste 90 dager før løpet:" ]
+        , statisticsHeader "Antall aktiviteter" <| String.fromInt <| List.length activities
+        , statisticsHeader "Total lengde (km)" <| formatDistance (getDistanceForActivities activities)
+        , statisticsField "Løping" <| formatDistance (getDistanceForActivities <| getRuns activities)
+        , statisticsField "Sykling" <| formatDistance (getDistanceForActivities <| getRides activities)
+        , statisticsField "Annet" <| formatDistance (getDistanceForActivities <| getOther activities)
+        , statisticsHeader "Total tid (timer)" <| formatHours (getTimeForActivities activities)
+        , statisticsField "Løping" <| formatHours (getTimeForActivities <| getRuns activities)
+        , statisticsField "Sykling" <| formatHours (getTimeForActivities <| getRides activities)
+        , statisticsField "Annet" <| formatHours (getTimeForActivities <| getOther activities)
         ]
 
 
@@ -585,8 +677,13 @@ view model =
                         text "Henter aktiviteter..."
 
                       else
-                        section [ class "flex-content" ] <|
+                        section [ class "flex-content" ]
                             [ renderRaces model.races
+                            , section [ class "main-content" ] <|
+                                List.map (\race -> statistics race <| getActivitiesForLastThreeMonths model.activities race) <|
+                                    List.filter
+                                        (\race -> race.active)
+                                        model.races
                             ]
                     ]
 
