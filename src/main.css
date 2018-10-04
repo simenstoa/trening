@@ -153,7 +153,6 @@ h1 {
   width: 20%;
   height: fit-content;
   margin-left: 5%;
-  padding: 12px;
 }
 
 .main-content {
@@ -171,10 +170,10 @@ h1 {
 
   .main-content {
     margin: 0 auto;
-    margin-top: 12px;
   }
 
   .statistics {
     width: 100%;
+    margin: 12px 0 0 0;
   }
 }
