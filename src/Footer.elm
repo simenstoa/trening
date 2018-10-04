@@ -1,6 +1,7 @@
 module Footer exposing (render)
 
 import Html exposing (Html, footer)
+import Html.Attributes exposing (class)
 import Messages exposing (Msg)
 import Svg exposing (path, polygon, svg)
 import Svg.Attributes as SvgAttr exposing (d, points, viewBox)
@@ -8,7 +9,7 @@ import Svg.Attributes as SvgAttr exposing (d, points, viewBox)
 
 render : Html Msg
 render =
-    footer [] [ poweredByStrava ]
+    footer [ class "footer" ] [ poweredByStrava ]
 
 
 poweredByStrava : Html Msg

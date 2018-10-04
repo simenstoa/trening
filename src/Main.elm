@@ -8,10 +8,12 @@ import Footer
 import Formatting exposing (formatDistance, formatHours, formatTime)
 import Html exposing (Html, a, div, footer, h1, h2, h3, header, img, p, section, span, text)
 import Html.Attributes exposing (alt, class, href, id, src, tabindex)
-import Html.Events exposing (onClick)
+import Html.Events exposing (on, onClick)
 import Http
 import Json.Decode as Decode exposing (Decoder, bool, float, int, string)
 import Json.Decode.Pipeline exposing (custom, hardcoded, optional, required)
+import Keyboard.Event exposing (KeyboardEvent, considerKeyboardEvent)
+import Keyboard.Key exposing (Key(..))
 import Messages exposing (LogInResult, Msg(..), Route(..))
 import Time
 import Url
@@ -154,6 +156,19 @@ handleUrlRequest url =
     ClickedLink url
 
 
+raceKeyPressedDecoder : Activity -> KeyboardEvent -> Maybe Msg
+raceKeyPressedDecoder race event =
+    case event.keyCode of
+        Enter ->
+            Just <| ClickedRace race
+
+        Spacebar ->
+            Just <| ClickedRace race
+
+        _ ->
+            Nothing
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
@@ -236,19 +251,20 @@ update msg model =
 renderActivity : Activity -> Html Msg
 renderActivity race =
     div
-        [ class "activity"
+        [ class <|
+            "activity"
+                ++ (if race.active then
+                        " active"
+
+                    else
+                        ""
+                   )
         , onClick <| ClickedRace race
         , tabindex 0
+        , on "keypress" <| considerKeyboardEvent <| raceKeyPressedDecoder race
         ]
         [ div
-            [ class
-                (if race.active then
-                    " active"
-
-                 else
-                    ""
-                )
-            ]
+            []
             [ text race.name
             ]
         ]
@@ -363,7 +379,7 @@ view model =
                             ]
                         ]
                     , if model.moreActivites then
-                        text "Henter aktiviteter..."
+                        section [ class "fetching-activities" ] [ text "Henter aktiviteter..." ]
 
                       else
                         section [ class "flex-content" ]

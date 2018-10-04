@@ -47,8 +47,18 @@ h1 {
   border: 1px solid #2b93e6;
 }
 
+.footer {
+  padding-top: 40px;
+}
+
 #strava_outlined {
   width: 150px;
+}
+
+.fetching-activities {
+  height: 500px;
+  vertical-align: middle;
+  line-height: 500px;
 }
 
 .container {
@@ -86,16 +96,17 @@ h1 {
   padding: 12px;
   box-sizing: border-box;
   border: 1px solid #fbf7f4;
+  background-color: #fbf7f4;
 }
 
 .activity:hover {
-  background-color: #fbf7f4;
   border: 1px solid #2b93e6;
   cursor: pointer;
 }
 
 .active {
-  font-style: oblique;
+  background-color: #85c9ff;
+  border: 1px solid #85c9ff;
 }
 
 .flex-content {
