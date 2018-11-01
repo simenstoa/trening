@@ -1,11 +1,12 @@
 module Main exposing (main)
 
-import Activities exposing (Activity, activityDecoder, calculateSecPerKm, getActivitiesForLastThreeMonths, getDistanceForActivities, getOther, getRaces, getRides, getRuns, getTimeForActivities)
+import Activities exposing (Activity, activityDecoder, calculateSecPerKm, getActivitiesForLastThreeMonths, getDistanceByWeeks, getDistanceForActivities, getLastThreeMonths, getOther, getRaces, getRides, getRuns, getTimeForActivities)
 import Athlete exposing (Athlete, athleteDecoder)
 import Browser
 import Browser.Navigation as Nav
 import Footer
 import Formatting exposing (formatDistance, formatHours, formatTime)
+import Graphs exposing (renderBarChart, renderGraph)
 import Html exposing (Html, a, div, footer, h1, h2, h3, header, img, p, section, span, text)
 import Html.Attributes exposing (alt, class, href, id, src, tabindex)
 import Html.Events exposing (on, onClick)
@@ -323,6 +324,10 @@ statisticsField =
 
 statistics : Activity -> List Activity -> Html Msg
 statistics race activities =
+    let
+        ( from, to ) =
+            getLastThreeMonths race
+    in
     section [ class "statistics" ]
         [ h3 [ class "statistics-header" ] [ text race.name ]
         , moreInformation race
@@ -330,6 +335,7 @@ statistics race activities =
         , statisticsHeader "Antall aktiviteter" <| String.fromInt <| List.length activities
         , statisticsHeader "Total lengde (km)" <| formatDistance (getDistanceForActivities activities)
         , statisticsField "Løping" <| formatDistance (getDistanceForActivities <| getRuns activities)
+        , renderBarChart <| List.map (\act -> { act | y = act.y / 1000 }) <| getDistanceByWeeks from to <| getRuns activities
         , statisticsField "Sykling" <| formatDistance (getDistanceForActivities <| getRides activities)
         , statisticsField "Annet" <| formatDistance (getDistanceForActivities <| getOther activities)
         , statisticsHeader "Total tid (timer)" <| formatHours (getTimeForActivities activities)

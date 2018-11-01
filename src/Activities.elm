@@ -3,7 +3,9 @@ module Activities exposing
     , activityDecoder
     , calculateSecPerKm
     , getActivitiesForLastThreeMonths
+    , getDistanceByWeeks
     , getDistanceForActivities
+    , getLastThreeMonths
     , getOther
     , getRaces
     , getRides
@@ -11,10 +13,13 @@ module Activities exposing
     , getTimeForActivities
     )
 
+import Dict exposing (Dict)
 import Iso8601
 import Json.Decode as Decode exposing (Decoder, bool, float, int, string)
 import Json.Decode.Pipeline exposing (custom, hardcoded, optional, required)
+import List.Extra exposing (groupWhile)
 import Time exposing (Posix)
+import Time.Extra exposing (Interval(..))
 
 
 
@@ -121,14 +126,23 @@ filterOnActivityType filter =
     List.filter (\{ activity_type } -> activity_type == filter)
 
 
-getActivitiesForLastThreeMonths : List Activity -> Activity -> List Activity
-getActivitiesForLastThreeMonths activities activity =
+getLastThreeMonths : Activity -> ( Posix, Posix )
+getLastThreeMonths activity =
     let
         to =
             activity.start_date_local
 
         from =
             Time.posixToMillis to - 7776000000 |> Time.millisToPosix
+    in
+    ( from, to )
+
+
+getActivitiesForLastThreeMonths : List Activity -> Activity -> List Activity
+getActivitiesForLastThreeMonths activities activity =
+    let
+        ( from, to ) =
+            getLastThreeMonths activity
     in
     getActivitiesByInterval from to activities
 
@@ -161,3 +175,72 @@ calculateSecPerKm distance moving_time =
             toFloat moving_time / (distance / 1000)
     in
     round sec_per_km
+
+
+getDistanceByWeeks : Posix -> Posix -> List Activity -> List { x : Float, y : Float }
+getDistanceByWeeks from to activities =
+    List.map
+        (\( bucket, acts ) ->
+            { x = toFloat bucket, y = List.foldl (\a sum -> sum + a.distance) 0 acts }
+        )
+        (groupActivitiesByWeek from to activities)
+
+
+groupActivitiesByWeek : Posix -> Posix -> List Activity -> List ( Int, List Activity )
+groupActivitiesByWeek from to activities =
+    let
+        startOfFromWeek =
+            from |> Time.Extra.floor Monday Time.utc
+
+        endOfToWeek =
+            to |> Time.Extra.ceiling Monday Time.utc
+    in
+    groupActivitiesByInterval startOfFromWeek endOfToWeek weekInterval activities
+
+
+groupActivitiesByInterval : Posix -> Posix -> Int -> List Activity -> List ( Int, List Activity )
+groupActivitiesByInterval from to duration activities =
+    let
+        filteredActivities =
+            List.filter
+                (\activity ->
+                    let
+                        time =
+                            Time.posixToMillis activity.start_date_local
+                    in
+                    time >= Time.posixToMillis from && time < Time.posixToMillis to
+                )
+                activities
+
+        buckets =
+            List.foldl
+                (\activity acc ->
+                    let
+                        bucket =
+                            calculateBucket from duration activity
+                    in
+                    case Dict.get bucket acc of
+                        Just acts ->
+                            Dict.insert bucket (activity :: acts) acc
+
+                        Nothing ->
+                            Dict.insert bucket [ activity ] acc
+                )
+                Dict.empty
+                filteredActivities
+    in
+    Dict.toList buckets
+
+
+calculateBucket : Posix -> Int -> Activity -> Int
+calculateBucket origo duration activity =
+    let
+        diff =
+            Time.posixToMillis activity.start_date_local - Time.posixToMillis origo
+    in
+    ceiling (toFloat diff / toFloat duration)
+
+
+weekInterval : Int
+weekInterval =
+    604800000
