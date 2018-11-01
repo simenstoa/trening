@@ -16,7 +16,7 @@ module Activities exposing
 import Dict exposing (Dict)
 import Iso8601
 import Json.Decode as Decode exposing (Decoder, bool, float, int, string)
-import Json.Decode.Pipeline exposing (custom, hardcoded, optional, required)
+import Json.Decode.Pipeline exposing (hardcoded, optional, required)
 import List.Extra exposing (groupWhile)
 import Time exposing (Posix)
 import Time.Extra exposing (Interval(..))

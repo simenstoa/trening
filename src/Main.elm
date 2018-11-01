@@ -7,19 +7,17 @@ import Browser.Navigation as Nav
 import Footer
 import Formatting exposing (formatDistance, formatHours, formatTime)
 import Graphs exposing (renderBarChart, renderGraph)
-import Html exposing (Html, a, div, footer, h1, h2, h3, header, img, p, section, span, text)
-import Html.Attributes exposing (alt, class, href, id, src, tabindex)
+import Html exposing (Html, a, div, h1, h2, h3, header, img, p, section, span, text)
+import Html.Attributes exposing (alt, class, href, src, tabindex)
 import Html.Events exposing (on, onClick)
 import Http
-import Json.Decode as Decode exposing (Decoder, bool, float, int, string)
-import Json.Decode.Pipeline exposing (custom, hardcoded, optional, required)
+import Json.Decode as Decode
 import Keyboard.Event exposing (KeyboardEvent, considerKeyboardEvent)
 import Keyboard.Key exposing (Key(..))
 import Messages exposing (LogInResult, Msg(..), Route(..))
-import Time
 import Url
 import Url.Builder
-import Url.Parser exposing ((</>), (<?>), map, oneOf, s)
+import Url.Parser exposing ((<?>), map, oneOf, s)
 import Url.Parser.Query as Query
 
 
@@ -346,9 +344,9 @@ statistics race activities =
 
 
 field : String -> String -> Html Msg
-field header value =
+field header_ value =
     div [ class "field" ]
-        [ div [ class "field-header" ] [ text header ]
+        [ div [ class "field-header" ] [ text header_ ]
         , div [ class "field-value" ] [ text value ]
         ]
 

@@ -1,7 +1,7 @@
 module Formatting exposing (formatDistance, formatHours, formatTime)
 
 import FormatNumber exposing (format)
-import FormatNumber.Locales exposing (Locale, frenchLocale)
+import FormatNumber.Locales exposing (frenchLocale)
 
 
 formatDistance : Float -> String
