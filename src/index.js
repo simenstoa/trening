@@ -8,6 +8,7 @@ Elm.Main.init({
     clientSecret: process.env.ELM_APP_STRAVA_CLIENT_SECRET,
     clientId: process.env.ELM_APP_STRAVA_CLIENT_ID,
     origin: process.env.ELM_APP_ORIGIN,
+    dev: process.env.NODE_ENV === 'development',
   },
 });
 

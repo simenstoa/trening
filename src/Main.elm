@@ -39,6 +39,7 @@ type alias Config =
     { clientSecret : String
     , clientId : String
     , origin : String
+    , dev : Bool
     }
 
 
@@ -55,7 +56,21 @@ type alias Model =
 
 initialModel : Nav.Key -> Config -> Model
 initialModel key config =
-    { applicationState = NotLoggedIn
+    let
+        applicationState =
+            if config.dev then
+                LoggedIn
+                    (AccessToken "dev")
+                    { id = 1
+                    , firstname = "Simen"
+                    , profile = "https://dgalywyr863hv.cloudfront.net/pictures/athletes/12175970/9691355/1/medium.jpg"
+                    , profile_medium = "https://dgalywyr863hv.cloudfront.net/pictures/athletes/12175970/9691355/1/medium.jpg"
+                    }
+
+            else
+                NotLoggedIn
+    in
+    { applicationState = applicationState
     , activities = []
     , races = []
     , activityPage = 0
@@ -103,8 +118,18 @@ fetchActivities model =
             Http.send UpdateActivities <|
                 Http.request
                     { method = "GET"
-                    , headers = [ Http.header "Authorization" ("Bearer " ++ token) ]
-                    , url = "https://www.strava.com/api/v3/athlete/activities?per_page=200&page=" ++ String.fromInt (model.activityPage + 1)
+                    , headers =
+                        if model.config.dev then
+                            []
+
+                        else
+                            [ Http.header "Authorization" ("Bearer " ++ token) ]
+                    , url =
+                        if model.config.dev then
+                            "http://localhost:8080/activities"
+
+                        else
+                            "https://www.strava.com/api/v3/athlete/activities?per_page=200&page=" ++ String.fromInt (model.activityPage + 1)
                     , body = Http.emptyBody
                     , expect = Http.expectJson (Decode.list activityDecoder)
                     , timeout = Nothing
@@ -222,7 +247,7 @@ update msg model =
                         | activities = List.concat [ model.activities, activities ]
                         , races = List.concat [ model.races, getRaces activities ]
                         , activityPage = model.activityPage + 1
-                        , moreActivites = List.length activities > 0
+                        , moreActivites = not model.config.dev && List.length activities > 0
                     }
             in
             ( newModel

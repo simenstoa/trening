@@ -4,11 +4,11 @@ import Activities exposing (Activity)
 import Html exposing (Html, div)
 import Html.Attributes exposing (class)
 import Messages exposing (Msg)
-import Plot exposing (area, circle, histogram, histogramBar, viewBars, viewSeries)
+import Plot exposing (Bars, Point, area, circle, histogram, histogramBar, viewBars, viewSeries)
 import Svg exposing (Svg)
 
 
-renderGraph : List { x : Float, y : Float } -> Html Msg
+renderGraph : List Point -> Html Msg
 renderGraph plots =
     div [ class "graph" ]
         [ viewSeries
@@ -18,13 +18,13 @@ renderGraph plots =
         ]
 
 
-renderBarChart : List { x : Float, y : Float } -> Html Msg
+renderBarChart : List Point -> Html Msg
 renderBarChart plots =
     div [ class "graph" ]
         [ viewBars histo plots ]
 
 
-histo : Plot.Bars (List { x : Float, y : Float }) msg
+histo : Bars (List Point) Msg
 histo =
     histogram
         (List.map
