@@ -7,11 +7,13 @@
     "test": "tests"
   },
   "scripts": {
+    "start": "elm-app start",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "create-elm-app": "^2.0.5"
+    "create-elm-app": "^2.0.5",
+    "natives": "^1.1.6"
   }
 }
