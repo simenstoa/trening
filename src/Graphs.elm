@@ -4,8 +4,21 @@ import Activities exposing (Activity)
 import Html exposing (Html, div)
 import Html.Attributes exposing (class)
 import Messages exposing (Msg)
-import Plot exposing (Bars, Point, area, circle, histogram, histogramBar, viewBars, viewSeries)
-import Svg exposing (Svg)
+import Plot
+    exposing
+        ( Bars
+        , Point
+        , area
+        , circle
+        , defaultBarsPlotCustomizations
+        , histogram
+        , histogramBar
+        , viewBars
+        , viewBarsCustom
+        , viewSeries
+        )
+import Svg exposing (Svg, linearGradient, stop)
+import Svg.Attributes exposing (id, offset, stopColor, stopOpacity, stroke)
 
 
 renderGraph : List Point -> Html Msg
@@ -21,11 +34,11 @@ renderGraph plots =
 renderBarChart : List Point -> Html Msg
 renderBarChart plots =
     div [ class "graph" ]
-        [ viewBars histo plots ]
+        [ viewBarsCustom defaultBarsPlotCustomizations renderHistogram plots ]
 
 
-histo : Bars (List Point) Msg
-histo =
+renderHistogram : Bars (List Point) Msg
+renderHistogram =
     histogram
         (List.map
             (\data -> histogramBar data.y)

@@ -82,7 +82,12 @@ initialModel key config =
 
 init : Config -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
 init config location key =
-    updateRoute (initialModel key config) <| parseLocation location
+    updateRoute (initialModel key config) <|
+        if config.dev then
+            RacesRoute
+
+        else
+            parseLocation location
 
 
 
